@@ -1,0 +1,124 @@
+<canvas id="game" width="900" height="500"></canvas>
+<script>
+const canvas = document.getElementById("game");
+const ctx = canvas.getContext("2d");
+
+let groundY = canvas.height - 80;
+let gravity = 0.8;
+
+let player = { x: 100, y: groundY, vx: 0, vy: 0, w: 48, h: 64, onGround: true };
+
+// platforms / panels
+let panels = [
+  { x: 400,  y: groundY - 100, w: 240, h: 20, title: "About Me", content: "Curious developer with a love for playful design." },
+  { x: 700,  y: groundY - 120, w: 240, h: 20, title: "Skills", content: "JavaScript, CSS, Python, Go..." },
+  { x: 1000, y: groundY - 110, w: 240, h: 20, title: "Experience", content: "Senior Engineer at Example Co..." }
+];
+
+let keys = {};
+document.addEventListener("keydown", e => keys[e.code] = true);
+document.addEventListener("keyup", e => keys[e.code] = false);
+
+function update() {
+  // horizontal movement
+  player.vx = 0;
+  if (keys["ArrowRight"] || keys["KeyD"]) player.vx = 3;
+  if (keys["ArrowLeft"]  || keys["KeyA"]) player.vx = -3;
+
+  // jump
+  if ((keys["ArrowUp"] || keys["Space"]) && player.onGround) {
+    player.vy = -14;
+    player.onGround = false;
+  }
+
+  // apply motion
+  player.x += player.vx;
+  player.y += player.vy;
+  if (!player.onGround) player.vy += gravity;
+
+  // reset each frame
+  player.onGround = false;
+  player.onPanel = null;
+
+  // ground collision
+  if (player.y >= groundY) {
+    player.y = groundY;
+    player.vy = 0;
+    player.onGround = true;
+  }
+
+  // platform collision using edges
+  panels.forEach(p => {
+    let playerLeft = player.x;
+    let playerRight = player.x + player.w;
+    let withinX = playerRight > p.x && playerLeft < p.x + p.w; // edge-based check
+    let falling = player.vy >= 0;
+    let touchingY = player.y >= p.y - 1 && player.y <= p.y + 20;
+    if (withinX && falling && touchingY) {
+      player.y = p.y;
+      player.vy = 0;
+      player.onGround = true;
+      player.onPanel = p;
+    }
+  });
+
+  if (player.x < 0) player.x = 0;
+}
+
+function draw() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  let camX = player.x - canvas.width/2 + player.w/2;
+  if (camX < 0) camX = 0;
+
+  // background
+  ctx.fillStyle = "#cce6ff";
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  // ground
+  ctx.fillStyle = "#444";
+  ctx.fillRect(-camX, groundY, 5000, 40);
+
+  // platforms / panels
+  panels.forEach(p => {
+    ctx.fillStyle = "#888";
+    ctx.fillRect(p.x - camX, p.y, p.w, p.h);
+
+    if (player.onPanel === p) {
+      ctx.fillStyle = "#fff";
+      ctx.fillRect(p.x - camX - 50, p.y - 180, p.w + 100, 160);
+      ctx.fillStyle = "#000";
+      ctx.font = "18px sans-serif";
+      ctx.fillText(p.title, p.x - camX - 20, p.y - 150);
+      wrapText(p.content, p.x - camX - 20, p.y - 120, p.w + 60, 20);
+    }
+  });
+
+  // player placeholder
+  ctx.fillStyle = "tomato";
+  ctx.fillRect(player.x - camX, player.y - player.h, player.w, player.h);
+}
+
+function wrapText(text, x, y, maxWidth, lineHeight) {
+  let words = text.split(" ");
+  let line = "";
+  for (let n = 0; n < words.length; n++) {
+    let testLine = line + words[n] + " ";
+    let testWidth = ctx.measureText(testLine).width;
+    if (testWidth > maxWidth && n > 0) {
+      ctx.fillText(line, x, y);
+      line = words[n] + " ";
+      y += lineHeight;
+    } else {
+      line = testLine;
+    }
+  }
+  ctx.fillText(line, x, y);
+}
+
+function loop() {
+  update();
+  draw();
+  requestAnimationFrame(loop);
+}
+loop();
+</script>
